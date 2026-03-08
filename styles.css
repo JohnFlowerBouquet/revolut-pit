@@ -69,6 +69,39 @@ header p {
     margin-right: auto;
 }
 
+.readme-content > summary {
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--text-color);
+    list-style: none; /* Hide default arrow in standard browsers */
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    outline: none;
+}
+
+.readme-content > summary::-webkit-details-marker {
+    display: none; /* Hide default arrow in webkit */
+}
+
+/* Custom indicator */
+.readme-content > summary::before {
+    content: '▶';
+    font-size: 0.8rem;
+    transition: transform 0.2s ease;
+    color: var(--accent-color);
+}
+
+.readme-content[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.readme-content[open] > summary {
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
 .readme-content p {
     color: var(--text-muted);
     font-size: 0.95rem;

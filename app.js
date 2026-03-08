@@ -6,40 +6,46 @@ document.addEventListener('DOMContentLoaded', () => {
     const incomeTableBody = document.querySelector('#income-table tbody');
     const feesTableHead = document.querySelector('#fees-table thead');
     const feesTableBody = document.querySelector('#fees-table tbody');
+    const readmeDetails = document.getElementById('readme-details');
     const readmeContainer = document.getElementById('readme-container');
 
-    // Fetch README from GitHub
-    fetch('https://api.github.com/repos/JohnFlowerBouquet/revolut-pit/readme')
-        .then(response => response.json())
-        .then(data => {
-            if (data.content) {
-                // Decode base64
-                const text = decodeURIComponent(escape(atob(data.content)));
-                
-                // Extremely basic pseudo-markdown parser specifically tailored to the README structure
-                const formattedHtml = text
-                    .split('\n\n')
-                    // Handle Blockquotes
-                    .map(paragraph => paragraph.startsWith('> ') 
-                        ? `<blockquote>${paragraph.replace(/^> /, '').trim()}</blockquote>`
-                        : paragraph)
-                    // Regular paragraphs & Bold tags
-                    .map(paragraph => {
-                        if (paragraph.startsWith('<')) return paragraph; // Skip already formatted blocks
-                        let html = paragraph.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-                        // Link tags
-                        html = html.replace(/https:\/\/api.nbp.pl([^\s]+)/g, '<a href="https://api.nbp.pl$1" target="_blank" class="api-link">https://api.nbp.pl$1</a>');
-                        return `<p>${html}</p>`;
-                    })
-                    .join('');
-                    
-                readmeContainer.innerHTML = formattedHtml;
-            }
-        })
-        .catch(err => {
-            console.error("Failed to load README from GitHub", err);
-            readmeContainer.innerHTML = '<p>Failed to load summary from GitHub.</p>';
-        });
+    let isReadmeFetched = false;
+
+    // Fetch README from GitHub only when opened
+    readmeDetails.addEventListener('toggle', (event) => {
+        if (event.target.open && !isReadmeFetched) {
+            isReadmeFetched = true;
+            fetch('https://api.github.com/repos/JohnFlowerBouquet/revolut-pit/readme')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.content) {
+                        try {
+                            const text = decodeURIComponent(escape(atob(data.content)));
+                            const formattedHtml = text
+                                .split('\n\n')
+                                .map(paragraph => paragraph.startsWith('> ') 
+                                    ? `<blockquote>${paragraph.replace(/^> /, '').trim()}</blockquote>`
+                                    : paragraph)
+                                .map(paragraph => {
+                                    if (paragraph.startsWith('<')) return paragraph; 
+                                    let html = paragraph.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                                    html = html.replace(/https:\/\/api.nbp.pl([^\s]+)/g, '<a href="https://api.nbp.pl$1" target="_blank" class="api-link">https://api.nbp.pl$1</a>');
+                                    return `<p>${html}</p>`;
+                                })
+                                .join('');
+                                
+                            readmeContainer.innerHTML = formattedHtml;
+                        } catch(e) {
+                            readmeContainer.innerHTML = '<p>Failed to parse summary</p>';
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.error("Failed to load README from GitHub", err);
+                    readmeContainer.innerHTML = '<p>Failed to load summary from GitHub.</p>';
+                });
+        }
+    });
 
     // Drag & Drop Handlers
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
