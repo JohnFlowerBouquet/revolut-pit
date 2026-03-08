@@ -47,6 +47,7 @@ header h1 {
     margin-bottom: 0.5rem;
     background: linear-gradient(to right, #58a6ff, #bc8cff);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
@@ -190,6 +191,13 @@ header p {
 
 .btn-primary:hover {
     background: var(--accent-hover);
+}
+
+.upload-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    flex-wrap: wrap;
 }
 
 .hidden {

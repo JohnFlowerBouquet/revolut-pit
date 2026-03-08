@@ -34,8 +34,10 @@
                     </svg>
                     <h3>Drag & Drop your CSV here</h3>
                     <p>or</p>
-                    <button class="btn-primary" onclick="document.getElementById('file-input').click()">Browse
-                        Files</button>
+                    <div class="upload-actions">
+                        <button class="btn-primary" onclick="document.getElementById('file-input').click()">Browse Files</button>
+                        <button class="btn-secondary" id="load-example-btn">Load Example</button>
+                    </div>
                 </div>
             </div>
 
@@ -64,7 +66,7 @@
                         <h2>Income from Sells</h2>
                         <label class="switch-label">
                             <input type="checkbox" id="convert-pln-toggle" disabled>
-                            <span id="convert-pln-text">Convert to PLN (Loading rates...)</span>
+                            <span id="convert-pln-text">Convert to PLN</span>
                         </label>
                     </div>
                     <div id="income-column-toggles" class="column-toggles"></div>

@@ -97,6 +97,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    document.getElementById('load-example-btn').addEventListener('click', () => {
+        fetch('test.csv')
+            .then(r => {
+                if (!r.ok) throw new Error('Not found');
+                return r.text();
+            })
+            .then(text => processText(text))
+            .catch(() => alert('Could not load test.csv. Make sure the page is served from a web server.'));
+    });
+
     function parseCSV(file) {
         const reader = new FileReader();
         reader.onload = function(e) {
@@ -397,26 +407,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchNBPRates() {
         const currencyIdx = parsedIncomeHeaders.findIndex(h => h && h.toLowerCase() === 'currency');
-        const dateSoldIdxIncome = parsedIncomeHeaders.findIndex(h => h && h.toLowerCase() === 'date sold');
+        const dateSoldIdx = parsedIncomeHeaders.findIndex(h => h && h.toLowerCase() === 'date sold');
+        const dateAcquiredIdx = parsedIncomeHeaders.findIndex(h => h && h.toLowerCase() === 'date acquired');
 
-        if (currencyIdx === -1 || dateSoldIdxIncome === -1) return;
+        if (currencyIdx === -1 || dateSoldIdx === -1) return;
         
         const currenciesToFetch = new Set();
         let minYear = Infinity;
         let maxYear = -Infinity;
 
-        parsedIncomeRows.forEach(row => {
-            const currency = row[currencyIdx] ? row[currencyIdx].toUpperCase() : '';
-            const dateStr = row[dateSoldIdxIncome];
-            if (currency && currency !== 'PLN' && currency !== 'UNKNOWN' && currency !== 'TOTAL') {
-                currenciesToFetch.add(currency);
-            }
+        const checkYear = (dateStr) => {
             const d = parseDateObj(dateStr);
             if (d) {
                 const year = d.getFullYear();
                 if (year < minYear) minYear = year;
                 if (year > maxYear) maxYear = year;
             }
+        };
+
+        parsedIncomeRows.forEach(row => {
+            const currency = row[currencyIdx] ? row[currencyIdx].toUpperCase() : '';
+            if (currency && currency !== 'PLN' && currency !== 'UNKNOWN' && currency !== 'TOTAL') {
+                currenciesToFetch.add(currency);
+            }
+            checkYear(row[dateSoldIdx]);
+            if (dateAcquiredIdx !== -1) checkYear(row[dateAcquiredIdx]);
         });
 
         if (currenciesToFetch.size === 0 || minYear === Infinity) {
@@ -525,49 +540,74 @@ document.addEventListener('DOMContentLoaded', () => {
         thead.appendChild(trHead);
 
         const currencyIdx = headers.findIndex(h => h && h.toLowerCase() === 'currency');
-        const dateSoldIdxIncome = headers.findIndex(h => h && h.toLowerCase() === 'date sold');
+        const dateSoldColIdx = headers.findIndex(h => h && h.toLowerCase() === 'date sold');
+        const dateAcquiredColIdx = headers.findIndex(h => h && h.toLowerCase() === 'date acquired');
+        const grossProceedsIdx = headers.findIndex(h => h && h.toLowerCase() === 'gross proceeds');
+        const costBasisIdx = headers.findIndex(h => h && h.toLowerCase() === 'cost basis');
+        const grossPnlIdx = headers.findIndex(h => h && h.toLowerCase() === 'gross pnl');
         const columnSums = {};
 
         // Render rows
         rows.forEach(row => {
             let trCurrencyVal = currencyIdx !== -1 ? (row[currencyIdx] || 'Unknown') : 'Total';
-            let rowConversionRate = 1;
+            let sellRate = null;
+            let acquireRate = null;
             let didConvert = false;
 
-            if (isIncomeTable && isConvertPLN && trCurrencyVal.toUpperCase() !== 'PLN' && dateSoldIdxIncome !== -1) {
-                const dateSoldStr = row[dateSoldIdxIncome];
-                const dSold = parseDateObj(dateSoldStr);
-                if (dSold) {
-                    const rate = getPreviousBusinessDayRate(trCurrencyVal.toUpperCase(), dSold);
-                    if (rate) {
-                        rowConversionRate = rate;
-                        trCurrencyVal = 'PLN';
-                        didConvert = true;
-                    }
+            if (isIncomeTable && isConvertPLN && trCurrencyVal.toUpperCase() !== 'PLN' && dateSoldColIdx !== -1) {
+                const currency = trCurrencyVal.toUpperCase();
+                const dSold = parseDateObj(row[dateSoldColIdx]);
+                const dAcquired = dateAcquiredColIdx !== -1 ? parseDateObj(row[dateAcquiredColIdx]) : null;
+
+                if (dSold) sellRate = getPreviousBusinessDayRate(currency, dSold);
+                if (dAcquired) acquireRate = getPreviousBusinessDayRate(currency, dAcquired);
+
+                if (sellRate) {
+                    trCurrencyVal = 'PLN';
+                    didConvert = true;
                 }
             }
 
             const tr = document.createElement('tr');
+
+            // Pre-compute PLN values if converting
+            let proceedsPLN = null;
+            let costPLN = null;
+            let pnlPLN = null;
+            if (didConvert) {
+                const rawProceeds = parseFloat(String(row[grossProceedsIdx] || '').replace(/[^-0-9.]/g, ''));
+                const rawCost = parseFloat(String(row[costBasisIdx] || '').replace(/[^-0-9.]/g, ''));
+                if (!isNaN(rawProceeds) && sellRate) proceedsPLN = rawProceeds * sellRate;
+                if (!isNaN(rawCost) && acquireRate) costPLN = rawCost * acquireRate;
+                else if (!isNaN(rawCost) && sellRate) costPLN = rawCost * sellRate; // fallback: use sell rate if acquire rate missing
+                if (proceedsPLN !== null && costPLN !== null) pnlPLN = proceedsPLN - costPLN;
+            }
 
             for (let j = 0; j < headers.length; j++) {
                 let val = row[j] || '';
                 const headerName = headers[j] ? headers[j].toLowerCase() : '';
                 const isMonetaryCol = ['cost', 'proceeds', 'pnl', 'amount', 'tax', 'price'].some(kw => headerName.includes(kw));
 
-                // Process Conversions inline Before display and Math block
-                if (didConvert && isMonetaryCol) {
+                // Process conversions column by column
+                if (didConvert && headerName === 'currency') {
+                    val = 'PLN';
+                } else if (didConvert && j === grossProceedsIdx && proceedsPLN !== null) {
+                    val = parseFloat(proceedsPLN.toFixed(2)).toString();
+                } else if (didConvert && j === costBasisIdx && costPLN !== null) {
+                    val = parseFloat(costPLN.toFixed(2)).toString();
+                } else if (didConvert && j === grossPnlIdx && pnlPLN !== null) {
+                    val = parseFloat(pnlPLN.toFixed(2)).toString();
+                } else if (didConvert && isMonetaryCol && j !== costBasisIdx && j !== grossProceedsIdx && j !== grossPnlIdx) {
+                    // Other monetary columns (quantity stays, no other monetary cols typically)
                     const numStr = String(val).replace(/[^-0-9.]/g, '');
                     if (numStr !== '') {
-                        const isNegative = String(val).includes('-');
+                        const isNeg = String(val).includes('-');
                         let numVal = parseFloat(numStr);
                         if (!isNaN(numVal)) {
-                            numVal = isNegative ? -Math.abs(numVal) : Math.abs(numVal);
-                            numVal = numVal * rowConversionRate;
-                            val = parseFloat(numVal.toFixed(2)).toString();
+                            numVal = isNeg ? -Math.abs(numVal) : Math.abs(numVal);
+                            val = parseFloat((numVal * sellRate).toFixed(2)).toString();
                         }
                     }
-                } else if (didConvert && headerName === 'currency') {
-                    val = 'PLN';
                 }
 
                 if (!visibilityArray || visibilityArray[j]) {
