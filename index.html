@@ -1,37 +1,70 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Revolut Position Tracker</title>
+    <title>Revolut Profits and Losses summary</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
     <div class="app-container">
         <header>
-            <h1>Revolut Position Tracker</h1>
+            <h1>Revolut Profits and Losses summary</h1>
             <p>Upload your CSV report to view income from sells and other fees.</p>
+            <div id="readme-container" class="readme-content">
+                <p>Loading summary from GitHub...</p>
+            </div>
         </header>
 
         <main>
             <div class="upload-section" id="drop-zone">
                 <input type="file" id="file-input" accept=".csv" hidden>
                 <div class="upload-content">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                         <polyline points="17 8 12 3 7 8"></polyline>
                         <line x1="12" y1="3" x2="12" y2="15"></line>
                     </svg>
                     <h3>Drag & Drop your CSV here</h3>
                     <p>or</p>
-                    <button class="btn-primary" onclick="document.getElementById('file-input').click()">Browse Files</button>
+                    <button class="btn-primary" onclick="document.getElementById('file-input').click()">Browse
+                        Files</button>
+                </div>
+            </div>
+
+            <div id="filter-section" class="filter-section hidden">
+                <div class="filter-group">
+                    <label for="start-date">Start Date</label>
+                    <input type="date" id="start-date" class="date-input">
+                </div>
+                <div class="filter-group">
+                    <label for="end-date">End Date</label>
+                    <input type="date" id="end-date" class="date-input">
+                </div>
+                <div class="filter-quick">
+                    <button class="btn-secondary btn-sm" id="btn-last-year">Last Year</button>
+                    <button class="btn-secondary btn-sm" id="btn-current-year">Current Year</button>
+                </div>
+                <div class="filter-actions">
+                    <button class="btn-secondary" id="clear-filters">Clear</button>
+                    <button class="btn-primary" id="apply-filters">Apply Filters</button>
                 </div>
             </div>
 
             <div id="results-container" class="hidden">
                 <div class="table-section">
-                    <h2>Income from Sells</h2>
+                    <div class="section-header-flex">
+                        <h2>Income from Sells</h2>
+                        <label class="switch-label">
+                            <input type="checkbox" id="convert-pln-toggle" disabled>
+                            <span id="convert-pln-text">Convert to PLN (Loading rates...)</span>
+                        </label>
+                    </div>
+                    <div id="income-column-toggles" class="column-toggles"></div>
                     <div class="table-wrapper">
                         <table id="income-table">
                             <thead></thead>
@@ -42,6 +75,7 @@
 
                 <div class="table-section">
                     <h2>Other income & fees</h2>
+                    <div id="fees-column-toggles" class="column-toggles"></div>
                     <div class="table-wrapper">
                         <table id="fees-table">
                             <thead></thead>
@@ -55,4 +89,5 @@
 
     <script src="app.js"></script>
 </body>
+
 </html>
